@@ -1,6 +1,6 @@
 import { DataTypes } from "sequelize";
-import sequelize from "../Database/db";
-import {Message} from "./Message";
+import sequelize from "../Database/db.js";
+import Message from "./Message.js";
 const File = sequelize.define(
   "File",
   {
@@ -15,10 +15,10 @@ const File = sequelize.define(
     chat_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references:{
-        model:"Message",
-        key:"message_id"
-      }
+      references: {
+        model: Message,
+        key: "message_id",
+      },
     },
     file: {
       type: DataTypes.TEXT,

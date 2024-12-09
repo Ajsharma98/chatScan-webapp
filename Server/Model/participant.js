@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
-import sequelize from "../Database/db";
-import { Room } from "./Room";
-import { User } from "./User";
+import sequelize from "../Database/db.js";
+import Room from "./Room.js";
+import User from "./User.js";
 const Participant = sequelize.define(
   "Participant",
   {
@@ -17,7 +17,7 @@ const Participant = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: "Room",
+        model: Room,
         key: "room_id",
       },
     },
@@ -25,7 +25,7 @@ const Participant = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: "User",
+        model: User,
         key: "user_id",
       },
     },

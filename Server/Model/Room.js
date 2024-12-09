@@ -1,6 +1,6 @@
 import { DataTypes } from "sequelize";
-import sequelize from "../Database/db";
-import { User } from "./User";
+import sequelize from "../Database/db.js";
+import User  from "./User.js";
 const Room = sequelize.define(
   "Room",
   {
@@ -20,7 +20,7 @@ const Room = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: "User",
+        model: User,
         key: "user_id",
       },
     },
