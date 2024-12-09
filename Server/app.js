@@ -1,23 +1,26 @@
 import express from "express";
 import dotenv from "dotenv";
 dotenv.config(); // Load environment variables from .env file
+import userRoutes from "./Routes/loginRoutes.js";
 import cors from "cors";
 import "./Model/index.js";
 import sequelize from "./Database/db.js";
 const app = express();
-app.use(express.urlencoded({ extended: true })); // For HTML form submission or key-value pair data
 app.use(
-  cors({
-    origin: "http://localhost:5173", // URL of the frontend
-    credentials: true, // Include cookies and session for authorization
-  })
-);
+    cors({
+      origin: "http://localhost:5173", // URL of the frontend
+      credentials: true, // Include cookies and session for authorization
+    })
+  );
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json()); // For HTML form submission or key-value pair data
 
-app.use(express.json());
+app.use("/users", userRoutes);
+
 const PORT = process.env.PORT || 4000;
 
 sequelize
-  .sync({ force: true })
+  .sync({ alter: true })
   .then(() => {
     console.log("Database synced successfully.");
     app.listen(PORT, () => {
