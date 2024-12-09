@@ -1,5 +1,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../Database/db";
+import { User } from "./User";
+import { Room } from "./Room";
 const Message = sequelize.define(
   "Message",
   {
@@ -14,10 +16,18 @@ const Message = sequelize.define(
     sender_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
     },
     room_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      references: {
+        model: "Room",
+        key: "room_id",
+      },
     },
     message: {
       type: DataTypes.STRING,
