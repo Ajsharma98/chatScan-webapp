@@ -1,5 +1,6 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../Database/db";
+import { User } from "./User";
 const Room = sequelize.define(
   "Room",
   {
@@ -18,6 +19,10 @@ const Room = sequelize.define(
     owner_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      references: {
+        model: "User",
+        key: "user_id",
+      },
     },
     room_id: {
       type: DataTypes.INTEGER,
@@ -35,6 +40,11 @@ const Room = sequelize.define(
     },
     latest_message: {
       type: DataTypes.STRING,
+    },
+    Status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "Clean",
     },
   },
   {
