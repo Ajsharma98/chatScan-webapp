@@ -7,11 +7,11 @@ import "./Model/index.js";
 import sequelize from "./Database/db.js";
 const app = express();
 app.use(
-    cors({
-      origin: "http://localhost:5173", // URL of the frontend
-      credentials: true, // Include cookies and session for authorization
-    })
-  );
+  cors({
+    origin: "http://localhost:5173", // URL of the frontend
+    credentials: true, // Include cookies and session for authorization
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json()); // For HTML form submission or key-value pair data
 

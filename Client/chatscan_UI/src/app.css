@@ -24,10 +24,17 @@ a:hover {
 
 body {
   margin: 0;
+  padding: 0;
+  background: url(https://i.ibb.co/VQmtgjh/6845078.png) no-repeat;
+  height: 100vh;
+  font-family: sans-serif;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  overflow: hidden;
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  justify-content: center;
+  align-items: center;
 }
 
 h1 {
