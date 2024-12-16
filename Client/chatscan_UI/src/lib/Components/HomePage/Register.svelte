@@ -51,9 +51,9 @@
       <div class="wrapper">
         <div class="container">
           <h2 class="heading">Create Account</h2>
-          <h5 class="subheading">Join us and start your journey</h5>
+          <!-- <h5 class="subheading">Join us and start your journey</h5> -->
           <!-- Input fields -->
-          <input type="text" placeholder="display_name" bind:value={display_name} />
+          <input type="text" placeholder="Display Name" bind:value={display_name} />
           <input type="email" placeholder="Email" bind:value={email} />
           <input type="password" placeholder="Password" bind:value={password} />
           <input
