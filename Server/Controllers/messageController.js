@@ -1,25 +1,27 @@
 import Room from "../Model/Room.js";
 import Message from "../Model/Message.js";
-
-import { v4 as uuidv4 } from "uuid"; // To generate unique invite codes
-import Room from "../Model/Room.js";
 import User from "../Model/User.js";
+import { v4 as uuidv4 } from "uuid"; // To generate unique invite codes
 
 export const createRoomController = async (req, res) => {
-  const { room_name, room_type  } = req.body;
+  const { room_name, room_type } = req.body;
 
   try {
     // Ensure the authenticated user's ID is available
     const { user_id } = req.user;
 
     if (!user_id) {
-      return res.status(401).json({ status: "error", message: "Unauthorized user" });
+      return res
+        .status(401)
+        .json({ status: "error", message: "Unauthorized user" });
     }
 
     // Check if the user exists in the User table (optional)
     const userExists = await User.findByPk(user_id);
     if (!userExists) {
-      return res.status(404).json({ status: "error", message: "User not found" });
+      return res
+        .status(404)
+        .json({ status: "error", message: "User not found" });
     }
 
     // Generate invite code if room is private
@@ -52,9 +54,6 @@ export const createRoomController = async (req, res) => {
       .json({ status: "error", message: "Internal server error" });
   }
 };
-
-
-
 
 export const messageController = (socket, io) => {
   socket.on("join room", async ({ room_id }) => {
