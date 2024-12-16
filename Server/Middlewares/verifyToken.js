@@ -27,7 +27,7 @@ export const verifyToken = async (req, res, next) => {
     // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log(decoded, "decoded token");
-    // const user_role = decoded.role;
+    const user_role = decoded.role;
     const user_id = decoded.id;
     const user = await User.findByPk(user_id);
     if (!user) {
@@ -43,4 +43,3 @@ export const verifyToken = async (req, res, next) => {
     return res.status(401).json({ message: "Invalid token" });
   }
 };
-
