@@ -1,6 +1,6 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../Database/db.js";
-import User  from "./User.js";
+import User from "./User.js";
 const Room = sequelize.define(
   "Room",
   {
@@ -8,13 +8,17 @@ const Room = sequelize.define(
     room_name: {
       type: DataTypes.STRING, // Email is stored as a string
       allowNull: false,
+      unique: true,
       // Email cannot be null
     },
     // Password column
     room_type: {
       type: DataTypes.STRING, // Password is stored as a string (hashed)
       allowNull: false,
-      defaultValue: "public", // Password cannot be null
+      defaultValue: "public",
+      validate: {
+        isIn: [["public", "private"]], // Accept only these values
+      }, // Password cannot be null
     },
     owner_id: {
       type: DataTypes.INTEGER,
@@ -37,12 +41,14 @@ const Room = sequelize.define(
     },
     invite_code: {
       type: DataTypes.STRING,
+      allowNull: true,
     },
     latest_message: {
       type: DataTypes.STRING,
+      allowNull: true,
     },
     Status: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM("Clean", "Noisy", "Dirty"),
       allowNull: false,
       defaultValue: "Clean",
     },

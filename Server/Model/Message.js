@@ -30,7 +30,7 @@ const Message = sequelize.define(
       },
     },
     message: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
   },

@@ -2,22 +2,21 @@ import { DataTypes } from "sequelize";
 import sequelize from "../Database/db.js";
 import Room from "./Room.js";
 import User from "./User.js";
+
 const Participant = sequelize.define(
   "Participant",
   {
-    // Email column as primary key
-
+    // Auto-incremented Primary Key
     participant_id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
-      allowNull: false,
       autoIncrement: true,
     },
     room_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: Room,
+        model: Room, // Reference the Room model
         key: "room_id",
       },
     },
@@ -25,18 +24,28 @@ const Participant = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: User,
+        model: User, // Reference the User model
         key: "user_id",
       },
     },
+    is_admin: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0, // Default: participant is not admin
+    },
+    joined_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW, // Track when the user joined
+    },
+    is_blocked: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false, // Default: participant is not blocked
+    },
   },
   {
-    // Model options
-
-    timestamps: false, // Disable automatic creation of createdAt and updatedAt
-    tableName: "participants", // Specify the table name explicitly
+    tableName: "participant", // Explicitly specify the table name
+    timestamps: false, // No automatic `createdAt` or `updatedAt`
   }
 );
-
-// Export the model
 export default Participant;
