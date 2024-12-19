@@ -2,40 +2,37 @@ import jwt from "jsonwebtoken";
 import User from "../Model/User.js";
 
 const socketAuthMiddleware = async (socket, next) => {
-  // Extract token from the Authorization header
-  const authHeader = socket.handshake.headers["authorization"];
+  const authHeader =
+    socket.handshake.auth.token || socket.handshake.headers.token;
+  console.log("Received token:", authHeader);
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!authHeader) {
     return next(
       new Error("Authentication error: No token provided in handshake")
     );
   }
 
-  // Extract the token by splitting the header
-  const token = authHeader.split(" ")[1];
-
   try {
+    const token = authHeader;
+
     if (!process.env.JWT_SECRET) {
       throw new Error("JWT_SECRET is not defined in environment variables");
     }
 
-    // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("Decoded Token:", decoded);
 
-    // Find the user by ID from the decoded token
     const user = await User.findByPk(decoded.id);
     if (!user) {
       return next(new Error("Authentication error: User not found"));
     }
 
-    // Attach limited user data to the socket object
     socket.user = user;
-    console.log(socket.user);
+    console.log("User info from DB:", socket.user);
 
-    // Proceed to the next middleware/handler
     return next();
   } catch (error) {
-    // Handle token errors
+    console.error("Token error:", error);
     if (error.name === "TokenExpiredError") {
       return next(new Error("Authentication error: Token expired"));
     }

@@ -11,38 +11,56 @@ import fetchRoomRoute from "./Routes/RoomRoutes/fetchRoomRoutes.js";
 import socketAuthMiddleware from "./Middlewares/socketAuthMiddleware.js";
 import sequelize from "./Database/db.js";
 
-dotenv.config(); // Load environment variables
+dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
+
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
   },
 });
-app.set("io", io);
-// Set up Socket.IO authentication middleware
-io.use(socketAuthMiddleware);
 
-// Socket.IO connection handler
+app.set("io", io);
+
+io.use(socketAuthMiddleware);
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.user.user_id}`);
 
-  // Handle messaging logic
-  try {
-    messageController(socket, io);
-    sendMessageHandler(socket, io);
+  socket.on("join_room", (roomId) => {
+    console.log(`Raw data received in join_room:`, roomId);
+    console.log(`User ${socket.user.user_id} joining room: ${roomId}`);
+    socket.join(roomId);
 
-    socket.on("disconnect", () => {
-      console.log(`User disconnected: ${socket.user.user_id}`);
+    io.to(roomId).emit("user_joined", {
+      user_id: socket.user.user_id,
+      room_name: roomId,
+      message: `User ${socket.user.user_id} has joined the room ${roomId}.`,
     });
-  } catch (error) {
-    console.error("Error handling socket connection:", error);
-  }
+    console.log(`User ${socket.user.user_id} has joined the room ${roomId}.`);
+  });
+
+  socket.on("send_message", (data) => {
+    const { room_id, message } = data;
+
+    console.log(
+      `Message from User ${socket.user.user_id} in Room ${room_id}: ${message}`
+    );
+
+    io.to(room_id).emit("receive_message", {
+      user_id: socket.user.user_id,
+      message,
+      timestamp: new Date(),
+    });
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.user.user_id}`);
+  });
 });
 
-// Express Middleware
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
@@ -52,13 +70,11 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Routes
 app.use("/users", userRoutes);
 app.use("/create", createRoute);
 app.use("/", fetchRoomRoute);
 app.post("/joinRoom", verifyToken, joinRoomController);
 
-// Global Error Handler
 app.use((err, req, res, next) => {
   console.error("Global Error:", err);
   res
@@ -68,7 +84,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 
-// Start server after DB sync
 sequelize
   .sync()
   .then(() => {
@@ -81,12 +96,11 @@ sequelize
     console.error("Error syncing database:", error);
   });
 
-// Graceful Shutdown
 process.on("SIGTERM", () => {
   console.log("SIGTERM received. Closing server...");
   httpServer.close(() => {
     console.log("Server closed.");
-    sequelize.close(); // Close database connection (optional)
+    sequelize.close();
     process.exit(0);
   });
 });

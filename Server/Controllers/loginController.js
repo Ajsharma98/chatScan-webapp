@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 export const signupUsers = async (req, res) => {
   try {
     var schema = new PasswordValidator();
-    // Add properties to it
+
     schema
       .is()
       .min(8) // Minimum length 8
@@ -24,46 +24,46 @@ export const signupUsers = async (req, res) => {
       .is()
       .not()
       .oneOf(["Passw0rd", "Password123"]); // Blacklist these values
-    // console.log(schema.validate("validPASS123"));
-    const { email, password, confirmPassword, display_name } = req.body;
+  
+    const { email, password, confirmPassword, display_name } = req.body; // accepting the input value from user
     console.log(req.body);
 
-    // Validate input fields
-    if (!email || !password || !confirmPassword || !display_name) {
+   
+    if (!email || !password || !confirmPassword || !display_name) { // checking for empty value from user
       return res.status(400).json({
         message: "Email, password, name and confirm password are required",
       });
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;          // using email regular expression for checking email format 
     if (!emailRegex.test(email)) {
       return res.status(400).json({ message: "Invalid email format" });
     }
-    // Validate email for lowercase
-    if (email !== email.toLowerCase()) {
+ 
+    if (email !== email.toLowerCase()) {                    // converting email to lowercase 
       return res.status(400).json({ message: "Email should be in lowercase" });
     }
-    // Check if password and confirmPassword match
-    if (password !== confirmPassword) {
+  
+    if (password !== confirmPassword) {                        // Check if password and confirmPassword match
       return res.status(400).json({ message: "Passwords do not match" });
     }
-    // Validate password strength
-    console.log(schema.validate(password), "error from schema");
+    
+    console.log(schema.validate(password), "error from schema");  // validating the password from schema 
     const passwordValid = schema.validate(password);
     if (!passwordValid) {
       return res
         .status(400)
         .json({ message: "Password is not strong enough!" });
     }
-    // Check if the user already exists
-    const existingUser = await User.findOne({ where: { email } });
+   
+    const existingUser = await User.findOne({ where: { email } });  // Check if the user already exists
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Hash the password and create a new user
-    const hashedPassword = await bcrypt.hash(password, 10);
+  
+    const hashedPassword = await bcrypt.hash(password, 10);   // Hash the password and create a new user
     const newUser = await User.create({
       email,
       password: hashedPassword,
@@ -80,28 +80,28 @@ export const signupUsers = async (req, res) => {
 };
 export const loginUsers = async (req, res) => {
   try {
-    let { email, password } = req.body;
-    email = email.toLowerCase();
-    // Check if user exists
+    let { email, password } = req.body;//accepting the email and password in request body 
+    email = email.toLowerCase(); // converting email to lower case
+   
 
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: { email } }); // Check if user exists
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
-    if (user.user_blocked === 1) {
+    if (user.user_blocked === 1) {// checking if the user is blocked or not if yes then not authorized to enter them to home page
       return res
         .status(403)
         .json({ message: "Account is deactivated. Please contact admin." });
     }
 
-    // Compare password
-    const passwordMatch = await bcrypt.compare(password, user.password);
+   
+    const passwordMatch = await bcrypt.compare(password, user.password); // Compare password
     if (!passwordMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
     const token = jwt.sign(
-      { id: user.user_id, email: user.email },
+      { id: user.user_id, email: user.email }, // providing the id and email in jwt token for authorization 
       process.env.JWT_SECRET,
       { expiresIn: "1hr" }
     );

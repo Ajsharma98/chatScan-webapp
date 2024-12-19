@@ -39,7 +39,7 @@
 
       if (response.ok) {
         const data = await response.json();
-
+        console.log(data.room_name);
         if (room_type === 'private') {
           invite_code = data.room.invite_code;
           window.alert(`Private Room Created! Share this invite code: ${invite_code}`);

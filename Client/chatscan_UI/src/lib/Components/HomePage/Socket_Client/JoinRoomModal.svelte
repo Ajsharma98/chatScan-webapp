@@ -1,128 +1,164 @@
 <script>
-    import { onMount } from 'svelte';
-    import { createEventDispatcher } from "svelte";
-  
-    const dispatch = createEventDispatcher();
-    
-    let room_name = ''; 
-    let rooms = [];  // Store the list of available rooms
-    let invite_code = ''; // To store invite code if room is private
-    let errorMessage = '';
-    let successMessage = '';
-  
-    // Fetch available rooms from the database when the modal is opened
-    onMount(async () => {
-      try {
-        const response = await fetch('http://localhost:4000/rooms', {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('jwtToken')}`, // Authorization token
-          },
-        });
-  
-        if (response.ok) {
-        const data = await response.json();
-        rooms=data.rooms
-          console.log("here is the room",rooms); // rooms is now an array
-        } else {
-          throw new Error('Failed to fetch rooms.');
-        }
-      } catch (err) {
-        errorMessage = 'Failed to load rooms.';
-      }
-    });
-  
-    async function handleJoinRoom() {
-      if (room_name.trim() === '') {
-        errorMessage = 'Room name is required.';
-        return;
-      }
-      // Find the selected room in the list of rooms
-      const selectedRoom = rooms.find(room => room.room_name === room_name);
-  
-      if (selectedRoom && selectedRoom.room_type === 'private' && invite_code.trim() === '') {
-        errorMessage = 'Invite code is required for private rooms.';
-        return;
-      }
-  
-      errorMessage = '';
-      try {
-        const response = await fetch('http://localhost:4000/joinRoom', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('jwtToken')}`,
-          },
-          body: JSON.stringify({ room_name, invite_code }),
-        });
-  
-        if (response.ok) {
-          const data = await response.json();
-          successMessage = 'Joined the room successfully!';
-          dispatch('success', data); // Notify parent component of the successful join
-        } else {
-          const error = await response.json();
-          errorMessage = error.message || 'Failed to join the room.';
-        }
-      } catch (err) {
-        errorMessage = 'An error occurred while joining the room.';
-      }
-    }
-  
-    function handleClose() {
-      dispatch('close');
-    }
-  
-    function onRoomChange() {
-      // Reset invite code when room selection changes
-      const selectedRoom = rooms.find(room => room.room_name === room_name);
-      if (selectedRoom && selectedRoom.room_type === 'private') {
-        invite_code = ''; // Reset invite code for private rooms
-      } else {
-        invite_code = ''; // Reset invite code if room is public
-      }
-    }
-    
-</script>
+  import { onMount } from 'svelte';
+  import { createEventDispatcher } from "svelte";
+  import { navigate } from "svelte-routing";
+  import io from 'socket.io-client'; 
+   import ChatRoom from "../../HomePage/Socket_Client/chatRoom.svelte"
 
+  const dispatch = createEventDispatcher();
+    
+  let room_name = ''; 
+  let rooms = []; 
+  let invite_code = ''; 
+  let errorMessage = '';
+  let successMessage = '';
+  let token = localStorage.getItem('jwtToken');
+  let room_id="";
+    
+  let socket;
+  
+  // Handle the token and socket setup when the component mounts
+  onMount(() => {
+    console.log("Token from localStorage:", token);
+
+    if (token) {
+      socket = io('http://localhost:4000', {
+        transports: ['websocket'],
+        auth: {
+          token: token
+        }
+      });
+
+    }
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  });
+
+  // Fetch rooms on component mount
+  onMount(async () => {
+    try {
+      const response = await fetch('http://localhost:4000/rooms', {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('jwtToken')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        rooms = data.rooms;
+        console.log("Here are the rooms:", rooms); 
+      } else {
+        throw new Error('Failed to fetch rooms.');
+      }
+    } catch (err) {
+      errorMessage = 'Failed to load rooms.';
+    }
+  });
+
+  // Handle the process of joining a room
+  async function handleJoinRoom() {
+    if (room_name.trim() === '') {
+      errorMessage = 'Room name is required.';
+      return;
+    }
+        
+    const selectedRoom = rooms.find(room => room.room_name === room_name);
+  
+    if (selectedRoom && selectedRoom.room_type === 'private' && invite_code.trim() === '') {
+      errorMessage = 'Invite code is required for private rooms.';
+      return;
+    }
+  
+    errorMessage = '';
+    try {
+      const response = await fetch('http://localhost:4000/joinRoom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('jwtToken')}`,
+        },
+        body: JSON.stringify({ room_name, invite_code }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(data);
+
+        successMessage = 'Joined the room successfully!';
+        dispatch('success', data);
+        console.log(data.room.room_id)
+        room_id=data.room.room_id;
+        // Emit join room event to server with room ID
+        socket.emit('join_room', data.room.room_id);
+
+        // Listen for the "user_joined" event from the socket
+        socket.on("user_joined", (data) => {
+          console.log(`User joined: ${data.user_id} in room: ${data.room_name}`);
+          window.alert(`${data.user_id} has joined the room: ${data.room_name}`);
+        });
+
+        // Navigate to the chat room
+        navigate(`/chat/${data.room.room_id}`);
+      } else {
+        const error = await response.json();
+        errorMessage = error.message || 'Failed to join the room.';
+      }
+    } catch (err) {
+      errorMessage = 'An error occurred while joining the room.';
+    }
+  }
+
+  function handleClose() {
+    dispatch('close');
+  }
+
+  function onRoomChange() {
+    const selectedRoom = rooms.find(room => room.room_name === room_name);
+    if (selectedRoom && selectedRoom.room_type === 'private') {
+      invite_code = ''; 
+    } else {
+      invite_code = ''; 
+    }
+  }
+
+</script>
+<ChatRoom {room_id}/>
+<!-- Modal to Join a Room -->
 <div class="modal">
-    <div class="modal-content">
-        <h3>Join Room</h3>
-  
-        <!-- Room Name Dropdown -->
-        <select bind:value={room_name} on:change={onRoomChange}>
-            <option value="" disabled selected>Select Room</option>
-            {#each rooms as room (room.room_id)}
-                <option value={room.room_name}>{room.room_name}</option>
-            {/each}
-        </select>
-  
-        <!-- Invite Code Field (Visible Only for Private Rooms) -->
-        {#if room_name && rooms.find(room => room.room_name === room_name && room.room_type === 'private')}
-            <input
-                type="text"
-                placeholder="Enter Invite Code"
-                bind:value={invite_code}
-            />
-        {/if}
-  
-        <!-- Success Message -->
-        {#if successMessage}
-            <p class="success-message">{successMessage}</p>
-        {/if}
-  
-        <!-- Error Message -->
-        {#if errorMessage}
-            <p class="error-message">{errorMessage}</p>
-        {/if}
-  
-        <!-- Modal Buttons -->
-        <div class="modal-buttons">
-            <button class="cancel-button" on:click={handleClose}>Cancel</button>
-            <button class="join-button" on:click={handleJoinRoom}>Join Room</button>
-        </div>
+  <div class="modal-content">
+    <h3>Join Room</h3>
+
+    <!-- Room Name Dropdown -->
+    <select bind:value={room_name} on:change={onRoomChange}>
+      <option value="" disabled selected>Select Room</option>
+      {#each rooms as room (room.room_id)}
+        <option value={room.room_name}>{room.room_name}</option>
+      {/each}
+    </select>
+
+    {#if room_name && rooms.find(room => room.room_name === room_name && room.room_type === 'private')}
+      <input type="text" placeholder="Enter Invite Code" bind:value={invite_code} />
+    {/if}
+
+    {#if successMessage}
+      <p class="success-message">{successMessage}</p>
+    {/if}
+
+    {#if errorMessage}
+      <p class="error-message">{errorMessage}</p>
+    {/if}
+
+    <div class="modal-buttons">
+      <button class="cancel-button" on:click={handleClose}>Cancel</button>
+      <button class="join-button" on:click={handleJoinRoom}>Join Room</button>
     </div>
+  </div>
 </div>
+
+
+  
 
   
   <style>
