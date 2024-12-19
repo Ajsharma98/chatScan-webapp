@@ -25,16 +25,16 @@ const io = new Server(httpServer, {
 
 app.set("io", io);
 
-io.use(socketAuthMiddleware);
+io.use(socketAuthMiddleware); // authorizing the socket connection
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.user.user_id}`);
 
   socket.on("join_room", (roomId) => {
-    console.log(`Raw data received in join_room:`, roomId);
+    // console.log(`Raw data received in join_room:`, roomId);
     console.log(`User ${socket.user.user_id} joining room: ${roomId}`);
     socket.join(roomId);
 
-    io.to(roomId).emit("user_joined", {
+    socket.broadcast.to(roomId).emit("user_joined", {
       user_id: socket.user.user_id,
       room_name: roomId,
       message: `User ${socket.user.user_id} has joined the room ${roomId}.`,
@@ -49,7 +49,7 @@ io.on("connection", (socket) => {
       `Message from User ${socket.user.user_id} in Room ${room_id}: ${message}`
     );
 
-    io.to(room_id).emit("receive_message", {
+    socket.broadcast.to(room_id).emit("receive_message", {
       user_id: socket.user.user_id,
       message,
       timestamp: new Date(),

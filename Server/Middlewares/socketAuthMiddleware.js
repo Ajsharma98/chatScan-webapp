@@ -4,7 +4,7 @@ import User from "../Model/User.js";
 const socketAuthMiddleware = async (socket, next) => {
   const authHeader =
     socket.handshake.auth.token || socket.handshake.headers.token;
-  console.log("Received token:", authHeader);
+  // console.log("Received token:", authHeader);
 
   if (!authHeader) {
     return next(
