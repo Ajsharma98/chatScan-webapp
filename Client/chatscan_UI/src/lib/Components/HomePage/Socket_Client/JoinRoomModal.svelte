@@ -3,7 +3,8 @@
   import { createEventDispatcher } from "svelte";
   import { navigate } from "svelte-routing";
   import io from 'socket.io-client'; 
-   import ChatRoom from "../../HomePage/Socket_Client/chatRoom.svelte"
+  import ChatRoom from "./ChatRoom.svelte";
+  import {room_id, roomName, chatHistory} from "../../../../store";
 
   const dispatch = createEventDispatcher();
     
@@ -13,11 +14,14 @@
   let errorMessage = '';
   let successMessage = '';
   let token = localStorage.getItem('jwtToken');
-  let room_id="";
+  let roomid='';
+  let roomname='';
+  let chathistory=[];
+
     
   let socket;
   
-  // Handle the token and socket setup when the component mounts
+
   onMount(() => {
     console.log("Token from localStorage:", token);
 
@@ -35,7 +39,7 @@
     };
   });
 
-  // Fetch rooms on component mount
+  
   onMount(async () => {
     try {
       const response = await fetch('http://localhost:4000/rooms', {
@@ -56,8 +60,18 @@
       errorMessage = 'Failed to load rooms.';
     }
   });
-
-  // Handle the process of joining a room
+  function handleClose() {
+    dispatch('close');
+  }
+  function onRoomChange() {
+    const selectedRoom = rooms.find(room => room.room_name === room_name);
+    if (selectedRoom && selectedRoom.room_type === 'private') {
+      invite_code = ''; 
+    } else {
+      invite_code = ''; 
+    }
+  };
+  
   async function handleJoinRoom() {
     if (room_name.trim() === '') {
       errorMessage = 'Room name is required.';
@@ -89,18 +103,28 @@
         successMessage = 'Joined the room successfully!';
         dispatch('success', data);
         console.log(data.room.room_id)
-        room_id=data.room.room_id;
+        roomid=data.room.room_id;
+        room_id.set(roomid)
+        roomname=data.room.room_name
+        roomName.set(roomname)
+        console.log(roomName)
+        // console.log("asdasdasd")
         // Emit join room event to server with room ID
         socket.emit('join_room', data.room.room_id);
 
-        // Listen for the "user_joined" event from the socket
+        
         socket.on("user_joined", (data) => {
           console.log(`User joined: ${data.user_id} in room: ${data.room_name}`);
           window.alert(`${data.user_id} has joined the room: ${data.room_name}`);
         });
-
-        // Navigate to the chat room
-        navigate(`/chat/${data.room.room_id}`);
+        chathistory = [...data.chatHistory];
+        chatHistory.set(chathistory)
+        console.log(chatHistory)
+     
+      
+        // navigate(`/chat/${data.room.room_id}`);
+        console.log(roomName)
+  // console.log("asdasdasd")
       } else {
         const error = await response.json();
         errorMessage = error.message || 'Failed to join the room.';
@@ -109,28 +133,19 @@
       errorMessage = 'An error occurred while joining the room.';
     }
   }
-
-  function handleClose() {
-    dispatch('close');
-  }
-
-  function onRoomChange() {
-    const selectedRoom = rooms.find(room => room.room_name === room_name);
-    if (selectedRoom && selectedRoom.room_type === 'private') {
-      invite_code = ''; 
-    } else {
-      invite_code = ''; 
-    }
-  }
-
+  // console.log(roomName)
+  // console.log("asdasdasd")
+  // console.log(roomName)
+  // console.log("roojhhj")
+  // console.log(room_id)
 </script>
-<ChatRoom {room_id}/>
-<!-- Modal to Join a Room -->
+<!-- <ChatRoom roomName= {roomName} room_id={room_id} chatHistory={chatHistory}/> -->
+
+
 <div class="modal">
   <div class="modal-content">
     <h3>Join Room</h3>
 
-    <!-- Room Name Dropdown -->
     <select bind:value={room_name} on:change={onRoomChange}>
       <option value="" disabled selected>Select Room</option>
       {#each rooms as room (room.room_id)}

@@ -2,14 +2,26 @@
   import { onMount } from "svelte";
   import { navigate } from "svelte-routing";
   import io from "socket.io-client";
+  import { chatHistory } from "../../../../store";
 
-  export let room_id = "";
+  export let room_id;
+
   let message = "";
   let messages = [];
   let token = localStorage.getItem("jwtToken");
   let socket;
 
+  const currentUserId = "Me"; 
+
   onMount(() => {
+   
+    messages = $chatHistory.map((msg) => ({
+      sender_id: msg.sender_id,
+      message: msg.message,
+      timestamp: msg.timestamp || new Date(), 
+      showName: false, 
+    }));
+
     if (token) {
       socket = io("http://localhost:4000", {
         transports: ["websocket"],
@@ -18,18 +30,37 @@
 
       socket.emit("join_room", room_id);
 
+     
       socket.on("user_joined", (data) => {
-        messages = [...messages, { system: true, message: data.message }];
+        messages = [
+          ...messages,
+          { system: true, message: data.message, sender_id: "system" },
+        ];
       });
 
+     
       socket.on("receive_message", (data) => {
-        // Prevent adding your own sent message again
-        if (data.user_id !== "Me") {
-          messages = [
-            ...messages,
-            { user_id: data.user_id, message: data.message, timestamp: data.timestamp },
-          ];
-        }
+        messages = [
+          ...messages,
+          {
+            sender_id: data.sender_id,
+            user_name: data.user_name, 
+            message: data.message,
+            timestamp: data.timestamp,
+            showName: true, 
+          },
+        ];
+      });
+
+      socket.on("previous_chat_messages", (newMessages) => {
+        const formattedMessages = newMessages.map((msg) => ({
+          sender_id: msg.sender_id,
+          message: msg.message,
+          timestamp: msg.createdAt,
+          showName: false, 
+        }));
+        $chatHistory = [...$chatHistory, ...formattedMessages];
+        // messages = [...messages, ...formattedMessages];
       });
     }
 
@@ -40,19 +71,20 @@
 
   const sendMessage = () => {
     if (message.trim()) {
-      // Display your message on the UI immediately
-      const newMessage = { user_id: "Me", message, timestamp: new Date().toISOString() };
+      const newMessage = {
+        sender_id: currentUserId,
+        message,
+        timestamp: new Date().toISOString(),
+        showName: true, 
+      };
       messages = [...messages, newMessage];
 
-      // Send message to the server
       socket.emit("send_message", { room_id, message });
 
-      // Clear input field
       message = "";
     }
   };
 
-  // Auto-scroll when new message is added
   $: {
     const messagesContainer = document.querySelector(".messages");
     if (messagesContainer) {
@@ -64,7 +96,7 @@
 <div class="chat-room">
   <div class="room-header">
     <h2>Room: {room_id}</h2>
-    <button class="exit-btn" on:click={() => navigate('/home')}>Exit Room</button>
+    <button class="exit-btn" on:click={() => navigate("/home")}>Exit Room</button>
   </div>
 
   <div class="messages">
@@ -72,11 +104,13 @@
       {#if msg.system}
         <div class="message system">{msg.message}</div>
       {:else}
-        <div class="message {msg.user_id === 'Me' ? 'me' : 'user'}">
-          {#if msg.user_id === 'Me'}
+        <div class="message {msg.sender_id === currentUserId ? 'me' : 'user'}">
+          {#if msg.sender_id === currentUserId}
             <p>{msg.message}</p>
+          {:else if msg.showName}
+            <strong>{msg.user_name}:</strong> {msg.message}
           {:else}
-            <strong>{msg.user_id}:</strong> {msg.message}
+            <strong>User {msg.sender_id}:</strong> {msg.message}
           {/if}
         </div>
       {/if}
@@ -97,25 +131,28 @@
 
 
 
+
 <style>
   .chat-room {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    height: 100vh; /* Occupy full screen height */
-    max-width: 600px; /* Constrain width for central layout */
-    margin: 20px auto; /* Center chat room */
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 1rem;
-    background-color: #8d6060;
+    height: 100vh;
+    max-width: 400px;
+    margin: 0 auto;
+    background-color: #2a3b58;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   }
+
   
   .room-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    padding: 10px 15px;
+    background-color: #3d4d6c;
+    color: white;
   }
   
   .room-header h2 {
@@ -137,75 +174,75 @@
   }
   
   .messages {
-    flex-grow: 1; /* Allow messages to grow and shrink to fill available space */
-    overflow-y: auto; /* Add scrolling for overflow content */
-    margin-bottom: 1rem;
-    padding: 1rem;
-    border: 1px solid #ddd;
-    background-color: #fff;
-    border-radius: 8px;
-    max-height: 400px; /* Limit maximum height */
+    flex-grow: 1;
+    padding: 15px;
+    background-color: #f5f5f5;
+    overflow-y: auto;
     display: flex;
-    flex-direction: column; /* Stack messages vertically */
-    gap: 10px; /* Add space between messages */
+    flex-direction: column;
+    gap: 15px;
   }
   
   .message {
     max-width: 70%;
     padding: 10px;
-    border-radius: 10px;
-    word-wrap: break-word;
-    font-size: 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    line-height: 1.4;
   }
   
   /* Styling for your messages */
   .message.me {
-    align-self: flex-end; /* Push to the right */
-    background-color: #daf7dc;
+    align-self: flex-end;
+    background-color: #007bff;
+    color: white;
     text-align: right;
   }
-  
-  /* Styling for others' messages */
+
   .message.user {
-    align-self: flex-start; /* Push to the left */
-    background-color: #f1f0f0;
-    text-align: left;
+    align-self: flex-start;
+    display: flex;
+    gap: 10px;
+    background-color: #e1f5fe;
+    color: black;
   }
   
   /* Styling for system messages */
   .message.system {
     align-self: center;
-    color: gray;
     font-style: italic;
+    color: gray;
   }
   
   .input-area {
     display: flex;
-    margin-top: 10px;
-    border-top: 1px solid #ddd;
-    padding-top: 10px;
-    align-items: center;
-  }
-  
-  input {
-    width: 85%;
     padding: 10px;
-    font-size: 1rem;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    margin-right: 10px;
+    background-color: #3d4d6c;
+    border-top: 1px solid #ccc;
   }
-  
+
+  input {
+    flex-grow: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 20px;
+    margin-right: 10px;
+    font-size: 1rem;
+  }
+
+  input:focus {
+    outline: none;
+  }
+
   button {
     padding: 10px 15px;
-    font-size: 1rem;
     background-color: #007bff;
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 20px;
     cursor: pointer;
   }
-  
+
   button:hover {
     background-color: #0056b3;
   }

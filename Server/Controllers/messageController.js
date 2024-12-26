@@ -116,10 +116,10 @@ export const sendMessageHandler = (socket, io) => {
 };
 
 export const joinRoomController = async (req, res) => {
-  const { room_name, invite_code } = req.body; // accepting the room_name and invite_code from request body
+  const { room_name, invite_code } = req.body;
 
   try {
-    const user_id = req.user_id; // storing the user_id from req.user_id which is taken from token
+    const user_id = req.user_id;
 
     if (!user_id) {
       return res
@@ -128,14 +128,14 @@ export const joinRoomController = async (req, res) => {
     }
 
     if (
-      !room_name || // checking the roon_name value
+      !room_name ||
       typeof room_name !== "string" ||
       room_name.trim() === ""
     ) {
       return res.status(400).json({ message: "Room name is required" });
     }
 
-    const room = await Room.findOne({ where: { room_name } }); // finding the room_name from database
+    const room = await Room.findOne({ where: { room_name } });
     if (!room) {
       return res
         .status(404)
@@ -143,25 +143,36 @@ export const joinRoomController = async (req, res) => {
     }
 
     if (room.room_type === "private" && room.invite_code !== invite_code) {
-      // checking whether you have provided the invite_code or not
       return res
         .status(403)
         .json({ status: "error", message: "Invalid invite code" });
     }
 
     const existingMember = await Participant.findOne({
-      // checking whether the user is already present in room
       where: { room_id: room.room_id, user_id },
     });
     console.log("Existing Member:", existingMember);
     if (existingMember) {
-      return res
-        .status(400)
-        .json({ status: "error", message: "You are already in this room" });
+      const messages = await Message.findAll({
+        where: { room_id: room.room_id },
+        order: [["createdAt", "ASC"]],
+        attributes: ["sender_id", "message", "createdAt"],
+      });
+
+      return res.status(200).json({
+        status: "success",
+        message: "Already a member of this room. Fetching chat history.",
+        room: {
+          room_id: room.room_id,
+          room_name: room.room_name,
+          room_type: room.room_type,
+          user_id,
+        },
+        chatHistory: messages,
+      });
     }
 
     const roomMember = await Participant.create({
-      // creating participant in participant room
       room_id: room.room_id,
       user_id,
       is_admin: 0,
@@ -183,6 +194,30 @@ export const joinRoomController = async (req, res) => {
     return res.status(500).json({
       status: "error",
       message: error.message || "Internal server error",
+    });
+  }
+};
+
+export const saveMessage = async (req, res) => {
+  const { sender_id, room_id, message } = req.body;
+
+  try {
+    if (!sender_id || !room_id || !message) {
+      return res.status(400).json({ error: "All fields are required." });
+    }
+
+    const newMessage = await Message.create({ sender_id, room_id, message });
+
+    return res.status(201).json({
+      success: true,
+      message: "Message saved successfully.",
+      data: newMessage,
+    });
+  } catch (error) {
+    console.error("Error saving message:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error.",
     });
   }
 };

@@ -76,5 +76,5 @@
 
 <!-- Join Room Modal -->
 {#if showJoinRoomModal}
-  <JoinRoomModal on:close={closeModel} />
+  <JoinRoomModal on:success={handleSuccess} on:close={closeModel} />
 {/if}

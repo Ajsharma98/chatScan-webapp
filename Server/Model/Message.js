@@ -35,10 +35,8 @@ const Message = sequelize.define(
     },
   },
   {
-    // Model options
-
-    timestamps: false, // Disable automatic creation of createdAt and updatedAt
-    tableName: "messages", // Specify the table name explicitly
+    timestamps: true,
+    tableName: "messages",
   }
 );
 

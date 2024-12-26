@@ -10,6 +10,7 @@ import createRoute from "./Routes/createRoute.js";
 import fetchRoomRoute from "./Routes/RoomRoutes/fetchRoomRoutes.js";
 import socketAuthMiddleware from "./Middlewares/socketAuthMiddleware.js";
 import sequelize from "./Database/db.js";
+import Message from "./Model/Message.js";
 
 dotenv.config();
 
@@ -27,37 +28,66 @@ app.set("io", io);
 
 io.use(socketAuthMiddleware); // authorizing the socket connection
 io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.user.user_id}`);
+  // console.log(`User connected: ${socket.user.user_id}`);
+  console.log(`User connected:${socket.user.display_name}`);
 
-  socket.on("join_room", (roomId) => {
+  socket.on("join_room", async (roomId) => {
     // console.log(`Raw data received in join_room:`, roomId);
-    console.log(`User ${socket.user.user_id} joining room: ${roomId}`);
+    console.log(`User ${socket.user.display_name} joining room: ${roomId}`);
     socket.join(roomId);
-
     socket.broadcast.to(roomId).emit("user_joined", {
       user_id: socket.user.user_id,
       room_name: roomId,
-      message: `User ${socket.user.user_id} has joined the room ${roomId}.`,
+      message: ` ${socket.user.display_name} has joined the room ${roomId}.`,
     });
-    console.log(`User ${socket.user.user_id} has joined the room ${roomId}.`);
+    console.log(
+      `User ${socket.user.display_name} has joined the room ${roomId}.`
+    );
+    try {
+      const messages = await Message.findAll({
+        where: { room_id: roomId },
+        order: [["createdAt", "ASC"]],
+        attributes: ["sender_id", "message", "createdAt"],
+      });
+      socket.emit("previous_chat_messages", messages);
+      
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+    
+    }
   });
 
-  socket.on("send_message", (data) => {
+  socket.on("send_message", async (data) => {
     const { room_id, message } = data;
+    try {
+      console.log(
+        `Message from User ${socket.user.display_name} in Room ${room_id}: ${message}`
+      );
 
-    console.log(
-      `Message from User ${socket.user.user_id} in Room ${room_id}: ${message}`
-    );
+      await Message.create({
+        sender_id: socket.user.user_id,
+        room_id,
+        message,
+      });
 
-    socket.broadcast.to(room_id).emit("receive_message", {
-      user_id: socket.user.user_id,
-      message,
-      timestamp: new Date(),
-    });
+      socket.broadcast.to(room_id).emit("receive_message", {
+        user_name: socket.user.display_name,
+        user_id: socket.user.user_id,
+        message,
+        timestamp: new Date(),
+      });
+      // console.log(socket.user.display_name);
+      console.log("Message saved to database successfully");
+    } catch (error) {
+      console.error("Error saving message:", error);
+      socket.emit("error_message", {
+        error: "Failed to send the message.",
+      });
+    }
   });
 
   socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.user.user_id}`);
+    console.log(`User disconnected: ${socket.user.display_name}`);
   });
 });
 
@@ -85,7 +115,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 4000;
 
 sequelize
-  .sync()
+  .sync({ alter: true })
   .then(() => {
     console.log("Database synced successfully.");
     httpServer.listen(PORT, () => {
